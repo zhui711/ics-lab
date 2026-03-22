@@ -1,0 +1,13 @@
+.bash_history
+.bash_logout
+.bashrc
+.cache/
+.copilot/
+.dotnet/
+.gitconfig
+.lesshst
+.profile
+.ssh/
+.vscode-server/
+.wget-hsts
+ics-project/
