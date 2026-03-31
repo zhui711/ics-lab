@@ -435,31 +435,31 @@ Disassembly of section .text:
     15ef:	f3 0f 1e fa          	endbr64
     15f3:	55                   	push   %rbp
     15f4:	53                   	push   %rbx
-    15f5:	48 83 ec 28          	sub    $0x28,%rsp
+    15f5:	48 83 ec 28          	sub    $0x28,%rsp         #开辟
     15f9:	64 48 8b 04 25 28 00 	mov    %fs:0x28,%rax
     1600:	00 00 
-    1602:	48 89 44 24 18       	mov    %rax,0x18(%rsp)
-    1607:	31 c0                	xor    %eax,%eax
+    1602:	48 89 44 24 18       	mov    %rax,0x18(%rsp)    
+    1607:	31 c0                	xor    %eax,%eax          #eax=0
     1609:	48 89 e6             	mov    %rsp,%rsi
     160c:	e8 ca 06 00 00       	call   1cdb <read_six_numbers>
-    1611:	83 3c 24 01          	cmpl   $0x1,(%rsp)
-    1615:	75 0a                	jne    1621 <phase_2+0x32>
-    1617:	48 89 e3             	mov    %rsp,%rbx
-    161a:	48 8d 6c 24 14       	lea    0x14(%rsp),%rbp
-    161f:	eb 10                	jmp    1631 <phase_2+0x42>
+    1611:	83 3c 24 01          	cmpl   $0x1,(%rsp)        #1.则输入这6个数字的第一个数是1
+    1615:	75 0a                	jne    1621 <phase_2+0x32> #1.跨过第一个炸弹
+    1617:	48 89 e3             	mov    %rsp,%rbx           
+    161a:	48 8d 6c 24 14       	lea    0x14(%rsp),%rbp     #1.即rbp是rsp往后移20个字节即指向末尾第6个数
+    161f:	eb 10                	jmp    1631 <phase_2+0x42> #1.跳到1631
     1621:	e8 5d 06 00 00       	call   1c83 <explode_bomb>
     1626:	eb ef                	jmp    1617 <phase_2+0x28>
-    1628:	48 83 c3 04          	add    $0x4,%rbx
-    162c:	48 39 eb             	cmp    %rbp,%rbx
+    1628:	48 83 c3 04          	add    $0x4,%rbx         #3.注意刚刚cmp不影响state，现在才rbx+4->指向第二位数即2
+    162c:	48 39 eb             	cmp    %rbp,%rbx         #3.比较走到第6位没有
     162f:	74 10                	je     1641 <phase_2+0x52>
-    1631:	8b 03                	mov    (%rbx),%eax
-    1633:	01 c0                	add    %eax,%eax
-    1635:	39 43 04             	cmp    %eax,0x4(%rbx)
-    1638:	74 ee                	je     1628 <phase_2+0x39>
+    1631:	8b 03                	mov    (%rbx),%eax       # 2.eax=字符串的开头，即1  ； 3.这时候eax=2
+    1633:	01 c0                	add    %eax,%eax         # 2.eax=1+1=2             ； 3.eax*2=4
+    1635:	39 43 04             	cmp    %eax,0x4(%rbx)    # 2.比2和rbx+4对应后一个int，即第二个数应该是2   #3.所以后一位数即第三位就是4
+    1638:	74 ee                	je     1628 <phase_2+0x39>  #这里必须跳否则会炸，则上面应该相等           #以此类推所以往上乘2，前一个数是后一个数的两倍
     163a:	e8 44 06 00 00       	call   1c83 <explode_bomb>
     163f:	eb e7                	jmp    1628 <phase_2+0x39>
-    1641:	48 8b 44 24 18       	mov    0x18(%rsp),%rax
-    1646:	64 48 2b 04 25 28 00 	sub    %fs:0x28,%rax
+    1641:	48 8b 44 24 18       	mov    0x18(%rsp),%rax   
+    1646:	64 48 2b 04 25 28 00 	sub    %fs:0x28,%rax     
     164d:	00 00 
     164f:	75 07                	jne    1658 <phase_2+0x69>
     1651:	48 83 c4 28          	add    $0x28,%rsp
@@ -470,38 +470,38 @@ Disassembly of section .text:
 
 000000000000165d <phase_3>:
     165d:	f3 0f 1e fa          	endbr64
-    1661:	48 83 ec 18          	sub    $0x18,%rsp
+    1661:	48 83 ec 18          	sub    $0x18,%rsp      #开辟一片16+8=24的内存
     1665:	64 48 8b 04 25 28 00 	mov    %fs:0x28,%rax
     166c:	00 00 
-    166e:	48 89 44 24 08       	mov    %rax,0x8(%rsp)
-    1673:	31 c0                	xor    %eax,%eax
-    1675:	48 8d 4c 24 04       	lea    0x4(%rsp),%rcx
-    167a:	48 89 e2             	mov    %rsp,%rdx
+    166e:	48 89 44 24 08       	mov    %rax,0x8(%rsp)   # rax指向rsp+8
+    1673:	31 c0                	xor    %eax,%eax        #eax=0
+    1675:	48 8d 4c 24 04       	lea    0x4(%rsp),%rcx   # rcx指向4+rsp
+    167a:	48 89 e2             	mov    %rsp,%rdx        #把rsp的值给rdx
     167d:	48 8d 35 f6 19 00 00 	lea    0x19f6(%rip),%rsi        # 307a <_IO_stdin_used+0x7a>
-    1684:	e8 87 fc ff ff       	call   1310 <__isoc99_sscanf@plt>
-    1689:	83 f8 01             	cmp    $0x1,%eax
-    168c:	7e 1e                	jle    16ac <phase_3+0x4f>
-    168e:	83 3c 24 07          	cmpl   $0x7,(%rsp)
-    1692:	0f 87 9a 00 00 00    	ja     1732 <phase_3+0xd5>
-    1698:	8b 04 24             	mov    (%rsp),%eax
-    169b:	48 8d 15 7e 1e 00 00 	lea    0x1e7e(%rip),%rdx        # 3520 <_IO_stdin_used+0x520>
-    16a2:	48 63 04 82          	movslq (%rdx,%rax,4),%rax
-    16a6:	48 01 d0             	add    %rdx,%rax
-    16a9:	3e ff e0             	notrack jmp *%rax
+    1684:	e8 87 fc ff ff       	call   1310 <__isoc99_sscanf@plt>  #从rsi看到了输入格式是%d %d
+    1689:	83 f8 01             	cmp    $0x1,%eax                   # eax=2>1
+    168c:	7e 1e                	jle    16ac <phase_3+0x4f>         # 这里不能jmp否则就爆了——其实就是检查输入个数罢了，前面分析rsi寄存器看输入格式已经看出来了
+    168e:	83 3c 24 07          	cmpl   $0x7,(%rsp)                 #如果rsp>7下面就会跳到炸弹，所以rsp指向的数≤7——通过gdb的x/s打印出来看到这时候rsp就是我们输入的第一个值，所以限制1是-input1要小于等于7
+    1692:	0f 87 9a 00 00 00    	ja     1732 <phase_3+0xd5>         #这个也是炸弹，所以不能跳
+    1698:	8b 04 24             	mov    (%rsp),%eax                 #把rsp中的值，即input1给eax
+    169b:	48 8d 15 7e 1e 00 00 	lea    0x1e7e(%rip),%rdx        # 3520 <_IO_stdin_used+0x520>   ——找到跳转表的基地址
+    16a2:	48 63 04 82          	movslq (%rdx,%rax,4),%rax          #rax=rdx+4*rax  算出相对位移
+    16a6:	48 01 d0             	add    %rdx,%rax                   # rax=rdx+rax   算出绝对地址
+    16a9:	3e ff e0             	notrack jmp *%rax                  #无条件跳转
     16ac:	e8 d2 05 00 00       	call   1c83 <explode_bomb>
     16b1:	eb db                	jmp    168e <phase_3+0x31>
-    16b3:	b8 00 00 00 00       	mov    $0x0,%eax
-    16b8:	2d 82 00 00 00       	sub    $0x82,%eax
+    16b3:	b8 00 00 00 00       	mov    $0x0,%eax                   #根据gdb打印绝对地址和disas，看到前面就是跳转到这里。eax=0——这是在我一开始input1拟定为1的情况下跳转到的地方
+    16b8:	2d 82 00 00 00       	sub    $0x82,%eax                  #一连串计算交给gdb
     16bd:	05 9c 02 00 00       	add    $0x29c,%eax
     16c2:	2d 63 02 00 00       	sub    $0x263,%eax
     16c7:	05 63 02 00 00       	add    $0x263,%eax
     16cc:	2d 63 02 00 00       	sub    $0x263,%eax
     16d1:	05 63 02 00 00       	add    $0x263,%eax
-    16d6:	2d 63 02 00 00       	sub    $0x263,%eax
-    16db:	83 3c 24 05          	cmpl   $0x5,(%rsp)
-    16df:	7f 06                	jg     16e7 <phase_3+0x8a>
-    16e1:	39 44 24 04          	cmp    %eax,0x4(%rsp)
-    16e5:	74 05                	je     16ec <phase_3+0x8f>
+    16d6:	2d 63 02 00 00       	sub    $0x263,%eax                 #最终到这里/x $rax = 0xffffffb7
+    16db:	83 3c 24 05          	cmpl   $0x5,(%rsp)                 #rsp的值就是input1，所以input1要<=5
+    16df:	7f 06                	jg     16e7 <phase_3+0x8a>         #不能跳，就是不能>
+    16e1:	39 44 24 04          	cmp    %eax,0x4(%rsp)              #即比较input1往后移4->input2  和  rax 
+    16e5:	74 05                	je     16ec <phase_3+0x8f>         #必须跳
     16e7:	e8 97 05 00 00       	call   1c83 <explode_bomb>
     16ec:	48 8b 44 24 08       	mov    0x8(%rsp),%rax
     16f1:	64 48 2b 04 25 28 00 	sub    %fs:0x28,%rax
@@ -528,57 +528,57 @@ Disassembly of section .text:
     173c:	eb 9d                	jmp    16db <phase_3+0x7e>
     173e:	e8 1d fb ff ff       	call   1260 <__stack_chk_fail@plt>
 
-0000000000001743 <func4>:
+0000000000001743 <func4>:   # func(rdi=inpu1,rsi=0,rdx=14)
     1743:	f3 0f 1e fa          	endbr64
-    1747:	48 83 ec 08          	sub    $0x8,%rsp
-    174b:	89 d0                	mov    %edx,%eax
-    174d:	29 f0                	sub    %esi,%eax
-    174f:	89 c1                	mov    %eax,%ecx
-    1751:	c1 e9 1f             	shr    $0x1f,%ecx
-    1754:	01 c1                	add    %eax,%ecx
-    1756:	d1 f9                	sar    $1,%ecx
-    1758:	01 f1                	add    %esi,%ecx
-    175a:	39 f9                	cmp    %edi,%ecx
-    175c:	7f 0c                	jg     176a <func4+0x27>
-    175e:	b8 00 00 00 00       	mov    $0x0,%eax
-    1763:	7c 11                	jl     1776 <func4+0x33>
-    1765:	48 83 c4 08          	add    $0x8,%rsp
-    1769:	c3                   	ret
-    176a:	8d 51 ff             	lea    -0x1(%rcx),%edx
-    176d:	e8 d1 ff ff ff       	call   1743 <func4>
-    1772:	01 c0                	add    %eax,%eax
+    1747:	48 83 ec 08          	sub    $0x8,%rsp  #再向下开辟8
+    174b:	89 d0                	mov    %edx,%eax  #返回值eax=edx=14：看完递归回来其实就用rdx控制rax
+    174d:	29 f0                	sub    %esi,%eax  #1.eax=eax-esi=14-0=14
+    174f:	89 c1                	mov    %eax,%ecx  #1.rcx=eax=14:所以实际只有3个传入参数
+    1751:	c1 e9 1f             	shr    $0x1f,%ecx #右移31位即提取rcx的符号位：1.rcx=0
+    1754:	01 c1                	add    %eax,%ecx  #rcx=rcx+rax：1.rcx=14
+    1756:	d1 f9                	sar    $1,%ecx    #rcx=rcx/2: 1.rcx=7
+    1758:	01 f1                	add    %esi,%ecx  #rcx=rcx+rsi: 1.rcx=7
+    175a:	39 f9                	cmp    %edi,%ecx  #
+    175c:	7f 0c                	jg     176a <func4+0x27> #若rcx>rdi就跳，进入递归；因为是-1所以如果不跳那rcx=rdi=input1：1.跳
+    175e:	b8 00 00 00 00       	mov    $0x0,%eax         #rax=0
+    1763:	7c 11                	jl     1776 <func4+0x33> #若rcx<rdi就跳
+    1765:	48 83 c4 08          	add    $0x8,%rsp         #回收空间，因为一开始借了8个
+    1769:	c3                   	ret                      #出口：找到了并且要求必须是5————根据原来分析，必须要在这个递归函数里找到input1的限定，即找ret=5与rdi=input1的关系
+    176a:	8d 51 ff             	lea    -0x1(%rcx),%edx  #rdx=rcx-1
+    176d:	e8 d1 ff ff ff       	call   1743 <func4>     #递归
+    1772:	01 c0                	add    %eax,%eax        #rax*2——往左边找！
     1774:	eb ef                	jmp    1765 <func4+0x22>
-    1776:	8d 71 01             	lea    0x1(%rcx),%esi
+    1776:	8d 71 01             	lea    0x1(%rcx),%esi   #rsi=rcx+1
     1779:	e8 c5 ff ff ff       	call   1743 <func4>
-    177e:	8d 44 00 01          	lea    0x1(%rax,%rax,1),%eax
+    177e:	8d 44 00 01          	lea    0x1(%rax,%rax,1),%eax  #rax*2+1——往右边找！
     1782:	eb e1                	jmp    1765 <func4+0x22>
 
 0000000000001784 <phase_4>:
     1784:	f3 0f 1e fa          	endbr64
-    1788:	48 83 ec 18          	sub    $0x18,%rsp
-    178c:	64 48 8b 04 25 28 00 	mov    %fs:0x28,%rax
+    1788:	48 83 ec 18          	sub    $0x18,%rsp          #开辟
+    178c:	64 48 8b 04 25 28 00 	mov    %fs:0x28,%rax       #保护内容
     1793:	00 00 
-    1795:	48 89 44 24 08       	mov    %rax,0x8(%rsp)
-    179a:	31 c0                	xor    %eax,%eax
-    179c:	48 8d 4c 24 04       	lea    0x4(%rsp),%rcx
-    17a1:	48 89 e2             	mov    %rsp,%rdx
-    17a4:	48 8d 35 cf 18 00 00 	lea    0x18cf(%rip),%rsi        # 307a <_IO_stdin_used+0x7a>
+    1795:	48 89 44 24 08       	mov    %rax,0x8(%rsp)      #上面保护的内容再移到rsp后8个字节
+    179a:	31 c0                	xor    %eax,%eax           #eax=0清零
+    179c:	48 8d 4c 24 04       	lea    0x4(%rsp),%rcx      #rcx=rsp+4，即8个字节的空间放两个int
+    17a1:	48 89 e2             	mov    %rsp,%rdx           #rdx指向rsp的位置
+    17a4:	48 8d 35 cf 18 00 00 	lea    0x18cf(%rip),%rsi        # 307a <_IO_stdin_used+0x7a>  #在这里用x/s $rsi看到输入要求是%d %d两个int
     17ab:	e8 60 fb ff ff       	call   1310 <__isoc99_sscanf@plt>
-    17b0:	83 f8 02             	cmp    $0x2,%eax
+    17b0:	83 f8 02             	cmp    $0x2,%eax           #前面sccanf读两个数，返回值肯定是2，这其实和前面偷看rsi重复了
     17b3:	75 06                	jne    17bb <phase_4+0x37>
-    17b5:	83 3c 24 0e          	cmpl   $0xe,(%rsp)
-    17b9:	76 05                	jbe    17c0 <phase_4+0x3c>
+    17b5:	83 3c 24 0e          	cmpl   $0xe,(%rsp)         #栈顶指针取地址即指向我们第一个输入的数，和14对比
+    17b9:	76 05                	jbe    17c0 <phase_4+0x3c> #所以这里肯定要跳，那第一个数应该≤14
     17bb:	e8 c3 04 00 00       	call   1c83 <explode_bomb>
-    17c0:	ba 0e 00 00 00       	mov    $0xe,%edx
-    17c5:	be 00 00 00 00       	mov    $0x0,%esi
-    17ca:	8b 3c 24             	mov    (%rsp),%edi
-    17cd:	e8 71 ff ff ff       	call   1743 <func4>
-    17d2:	83 f8 05             	cmp    $0x5,%eax
-    17d5:	75 07                	jne    17de <phase_4+0x5a>
-    17d7:	83 7c 24 04 05       	cmpl   $0x5,0x4(%rsp)
-    17dc:	74 05                	je     17e3 <phase_4+0x5f>
+    17c0:	ba 0e 00 00 00       	mov    $0xe,%edx           #把14放到edx里，edx=14
+    17c5:	be 00 00 00 00       	mov    $0x0,%esi           #esi=0
+    17ca:	8b 3c 24             	mov    (%rsp),%edi         #rdi=我们的第一个输入input1
+    17cd:	e8 71 ff ff ff       	call   1743 <func4>        #这时候func(inpu1,0,14)，追溯回第4个参数rcx，发现还是sccanf读入的没改变，即我们传入的第二个参数input2=5
+    17d2:	83 f8 05             	cmp    $0x5,%eax           #比较返回值eax和5
+    17d5:	75 07                	jne    17de <phase_4+0x5a> #所以要求eax必须返回5
+    17d7:	83 7c 24 04 05       	cmpl   $0x5,0x4(%rsp)      #gdb看一下栈顶向下第二个数：即比较input2和5
+    17dc:	74 05                	je     17e3 <phase_4+0x5f> #则input2要=5——这里就确定了第二个数！
     17de:	e8 a0 04 00 00       	call   1c83 <explode_bomb>
-    17e3:	48 8b 44 24 08       	mov    0x8(%rsp),%rax
+    17e3:	48 8b 44 24 08       	mov    0x8(%rsp),%rax      #这个是移到了保护的地方不管它
     17e8:	64 48 2b 04 25 28 00 	sub    %fs:0x28,%rax
     17ef:	00 00 
     17f1:	75 05                	jne    17f8 <phase_4+0x74>
