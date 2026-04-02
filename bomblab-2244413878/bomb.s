@@ -593,15 +593,15 @@ Disassembly of section .text:
     1806:	48 89 fb             	mov    %rdi,%rbx
     1809:	64 48 8b 04 25 28 00 	mov    %fs:0x28,%rax
     1810:	00 00 
-    1812:	48 89 44 24 08       	mov    %rax,0x8(%rsp)
-    1817:	31 c0                	xor    %eax,%eax
-    1819:	e8 21 03 00 00       	call   1b3f <string_length>
-    181e:	83 f8 06             	cmp    $0x6,%eax
-    1821:	75 55                	jne    1878 <phase_5+0x7b>
-    1823:	b8 00 00 00 00       	mov    $0x0,%eax
+    1812:	48 89 44 24 08       	mov    %rax,0x8(%rsp)   #上面保护的内容再移到rsp后8个字节，所以输入大概率还是8个字节
+    1817:	31 c0                	xor    %eax,%eax        #清零eax=0
+    1819:	e8 21 03 00 00       	call   1b3f <string_length>  #所以输入的应该是个字符串/数组
+    181e:	83 f8 06             	cmp    $0x6,%eax             #字符串的长度与6比较，即这里应该rax=6
+    1821:	75 55                	jne    1878 <phase_5+0x7b>   #要求字符串长度为6
+    1823:	b8 00 00 00 00       	mov    $0x0,%eax             #清零eax=0
     1828:	48 8d 0d 11 1d 00 00 	lea    0x1d11(%rip),%rcx        # 3540 <array.0>
-    182f:	0f b6 14 03          	movzbl (%rbx,%rax,1),%edx
-    1833:	83 e2 0f             	and    $0xf,%edx
+    182f:	0f b6 14 03          	movzbl (%rbx,%rax,1),%edx    #edx=rbx+rax 
+    1833:	83 e2 0f             	and    $0xf,%edx             #edx=
     1836:	0f b6 14 11          	movzbl (%rcx,%rdx,1),%edx
     183a:	88 54 04 01          	mov    %dl,0x1(%rsp,%rax,1)
     183e:	48 83 c0 01          	add    $0x1,%rax
