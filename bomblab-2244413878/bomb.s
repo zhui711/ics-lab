@@ -588,29 +588,29 @@ Disassembly of section .text:
 
 00000000000017fd <phase_5>:
     17fd:	f3 0f 1e fa          	endbr64
-    1801:	53                   	push   %rbx
+    1801:	53                   	push   %rbx             #返回地址
     1802:	48 83 ec 10          	sub    $0x10,%rsp
-    1806:	48 89 fb             	mov    %rdi,%rbx
+    1806:	48 89 fb             	mov    %rdi,%rbx        #main函数之前就已经调用了read_line读入并存在了rdi中，所以这里就是把rdi中我们输入的字符串备份到rbx中，即x/s $rbx就能看到我们的输入
     1809:	64 48 8b 04 25 28 00 	mov    %fs:0x28,%rax
     1810:	00 00 
-    1812:	48 89 44 24 08       	mov    %rax,0x8(%rsp)   #上面保护的内容再移到rsp后8个字节，所以输入大概率还是8个字节
+    1812:	48 89 44 24 08       	mov    %rax,0x8(%rsp)   
     1817:	31 c0                	xor    %eax,%eax        #清零eax=0
     1819:	e8 21 03 00 00       	call   1b3f <string_length>  #所以输入的应该是个字符串/数组
-    181e:	83 f8 06             	cmp    $0x6,%eax             #字符串的长度与6比较，即这里应该rax=6
+    181e:	83 f8 06             	cmp    $0x6,%eax             #字符串的长度与6比较，即这里应该返回值rax=6
     1821:	75 55                	jne    1878 <phase_5+0x7b>   #要求字符串长度为6
     1823:	b8 00 00 00 00       	mov    $0x0,%eax             #清零eax=0
-    1828:	48 8d 0d 11 1d 00 00 	lea    0x1d11(%rip),%rcx        # 3540 <array.0>
-    182f:	0f b6 14 03          	movzbl (%rbx,%rax,1),%edx    #edx=rbx+rax 
-    1833:	83 e2 0f             	and    $0xf,%edx             #edx=
-    1836:	0f b6 14 11          	movzbl (%rcx,%rdx,1),%edx
-    183a:	88 54 04 01          	mov    %dl,0x1(%rsp,%rax,1)
-    183e:	48 83 c0 01          	add    $0x1,%rax
-    1842:	48 83 f8 06          	cmp    $0x6,%rax
-    1846:	75 e7                	jne    182f <phase_5+0x32>
-    1848:	c6 44 24 07 00       	movb   $0x0,0x7(%rsp)
-    184d:	48 8d 7c 24 01       	lea    0x1(%rsp),%rdi
-    1852:	48 8d 35 e4 17 00 00 	lea    0x17e4(%rip),%rsi        # 303d <_IO_stdin_used+0x3d>
-    1859:	e8 02 03 00 00       	call   1b60 <strings_not_equal>
+    1828:	48 8d 0d 11 1d 00 00 	lea    0x1d11(%rip),%rcx        # 3540 <array.0> ————这是什么意思？是不是在告诉是数组的首地址？
+    182f:	0f b6 14 03          	movzbl (%rbx,%rax,1),%edx    #edx=rbx+rax————rbx是什么？为什么用gdb看一下子rdx = 0x69？
+    1833:	83 e2 0f             	and    $0xf,%edx             #相当于把edx保留后4位，前面全部清零————这时候gdb看到是rdx = 0x9
+    1836:	0f b6 14 11          	movzbl (%rcx,%rdx,1),%edx    #edx=rcx+rdx————rcx用gdb看不是$rcx = 0x555555557540数组的首地址吗？为什么加完过后变成了rdx = 0x66？
+    183a:	88 54 04 01          	mov    %dl,0x1(%rsp,%rax,1)  #把dl放到rsp+rax+1的地方————这是什么意思？
+    183e:	48 83 c0 01          	add    $0x1,%rax             #rax+1即rax=1
+    1842:	48 83 f8 06          	cmp    $0x6,%rax             #既然6这个数字这么特殊，推断rax是作为一个计数器；而在这个循环过程中，始终只有rdx在发生改变，tricks一定在这个rdx上，它到底在做什么？
+    1846:	75 e7                	jne    182f <phase_5+0x32>   #如果不同就跳，所以如果能通过就是rax=6，上面循环了6次
+    1848:	c6 44 24 07 00       	movb   $0x0,0x7(%rsp)        #7应该是6个字符加上\0
+    184d:	48 8d 7c 24 01       	lea    0x1(%rsp),%rdi        
+    1852:	48 8d 35 e4 17 00 00 	lea    0x17e4(%rip),%rsi        # 303d <_IO_stdin_used+0x3d>  ————没看懂这是什么意思
+    1859:	e8 02 03 00 00       	call   1b60 <strings_not_equal> #这里是正确答案的所在地，如何往前推？我想看到到底是跟什么字符串在比————神奇但不理解的地方：从套路上来说应该是能通过窥视某个寄存器看出这个函数到底是在与什么比较的，因为我发现了前面rsi在变，所以我直接窥探了一下x/s $rsi，结果发现这里面就有一个6字符的词，感觉这就是答案了。但是why？
     185e:	85 c0                	test   %eax,%eax
     1860:	75 1d                	jne    187f <phase_5+0x82>
     1862:	48 8b 44 24 08       	mov    0x8(%rsp),%rax
