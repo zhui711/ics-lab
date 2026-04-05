@@ -642,7 +642,7 @@ Disassembly of section .text:
     18ad:	4c 8d 7c 24 10       	lea    0x10(%rsp),%r15
     18b2:	4c 89 7c 24 08       	mov    %r15,0x8(%rsp)
     18b7:	4c 89 fe             	mov    %r15,%rsi
-    18ba:	e8 1c 04 00 00       	call   1cdb <read_six_numbers>
+    18ba:	e8 1c 04 00 00       	call   1cdb <read_six_numbers>  #进去用disas看到sccanf的rsi寄存器期望输入格式是：%d %d %d %d %d %d
     18bf:	4d 89 fc             	mov    %r15,%r12
     18c2:	41 be 01 00 00 00    	mov    $0x1,%r14d
     18c8:	4d 89 fd             	mov    %r15,%r13
@@ -664,9 +664,9 @@ Disassembly of section .text:
     1907:	0f 85 96 00 00 00    	jne    19a3 <phase_6+0x118>
     190d:	48 8b 54 24 08       	mov    0x8(%rsp),%rdx
     1912:	48 83 c2 18          	add    $0x18,%rdx
-    1916:	b9 07 00 00 00       	mov    $0x7,%ecx
+    1916:	b9 07 00 00 00       	mov    $0x7,%ecx。 #开始循环
     191b:	89 c8                	mov    %ecx,%eax
-    191d:	41 2b 04 24          	sub    (%r12),%eax
+    191d:	41 2b 04 24          	sub    (%r12),%eax  #eax=7-input1————这就是变换规律：所以由后面的分析回来就是：1，2，5，3，4，6
     1921:	41 89 04 24          	mov    %eax,(%r12)
     1925:	49 83 c4 04          	add    $0x4,%r12
     1929:	49 39 d4             	cmp    %rdx,%r12
@@ -674,8 +674,8 @@ Disassembly of section .text:
     192e:	be 00 00 00 00       	mov    $0x0,%esi
     1933:	8b 4c b4 10          	mov    0x10(%rsp,%rsi,4),%ecx
     1937:	b8 01 00 00 00       	mov    $0x1,%eax
-    193c:	48 8d 15 cd 38 00 00 	lea    0x38cd(%rip),%rdx        # 5210 <node1>
-    1943:	83 f9 01             	cmp    $0x1,%ecx
+    193c:	48 8d 15 cd 38 00 00 	lea    0x38cd(%rip),%rdx        # 5210 <node1>  头节点——遍历链表:node1:360,node2:774,node3:464,node4:528,node5:800,node6:982
+    1943:	83 f9 01             	cmp    $0x1,%ecx                # 比大小：node6:982>node5:800>node2:774>node4:528>node3:464>node1:360
     1946:	7e 0b                	jle    1953 <phase_6+0xc8>
     1948:	48 8b 52 08          	mov    0x8(%rdx),%rdx
     194c:	83 c0 01             	add    $0x1,%eax
