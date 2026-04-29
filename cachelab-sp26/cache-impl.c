@@ -18,7 +18,40 @@ int l3_evictions = 0;
 int cache_levels = 0;
 
 // you can add your own data structures and functions below
+// var
 uint64_t global_time=0;
+
+// struct
+typedef struct{
+  uint64_t tag;
+  int set_index;
+  int block_offset;
+} CacheAddr;
+
+// func
+int find_log2(int x){
+  // 对象只是2的幂
+  int count=0;
+  while(x>1){
+    x=x/2;
+    count++;
+  }
+  return count;
+}
+// 解析地址
+CacheAddr parse_addr(uint64_t addr,int set_num,int cacheline_size){
+  // 输出tag, set index, block offset
+  int b,s;
+  b=find_log2(cacheline_size);
+  s=find_log2(set_num);
+  // int t=64-b-s;
+
+  CacheAddr cache_addr;
+  cache_addr.block_offset=(int)((((uint64_t)1<<b)-1)&addr);
+  cache_addr.set_index=(int)((((uint64_t)1<<s)-1)&(addr>>b));
+  cache_addr.tag=addr>>(b+s);
+  return cache_addr;
+}
 
 // you are not allowed to modify the declaration of this function
 void cacheInit(int levels) {
