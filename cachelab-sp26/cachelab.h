@@ -1,5 +1,5 @@
 /*
- * cachelab.h - Prototypes for Cache Lab helper functions
+ * cachelab.h - Prototypes for Cache Lab helper functions 
  */
 
 #ifndef CACHE_LAB_H
@@ -8,18 +8,22 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+// block offset bits需要3个; set index bits需要2个; tag bits需要64-3-2=59个
 #define L1_SET_NUM 4
 #define L1_LINE_NUM 2
 #define L1_CACHELINE_SIZE 8
 
+// block offset bits要3个; set index bits要3个; tag bits要64-3-3=58个
 #define L2_SET_NUM 8
 #define L2_LINE_NUM 4
 #define L2_CACHELINE_SIZE 8
 
+// block offset bits要4个; set index bits要4个; tag bits要64-4-4=56个
 #define L3_SET_NUM 16
 #define L3_LINE_NUM 8
 #define L3_CACHELINE_SIZE 16
 
+// 地址64个bits
 #define ADDRESS_LENGTH 64
 
 #define MAX_TRANS_FUNCS 100

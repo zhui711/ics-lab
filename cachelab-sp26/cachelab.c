@@ -11,7 +11,7 @@ trans_func_t func_list[MAX_TRANS_FUNCS];
 int func_counter = 0;
 
 /*
- * initMatrix - Initialize the given matrix
+ * initMatrix - Initialize the given matrix——初始化cache
  */
 void initMatrix(int M, int N, int A[N][M], int B[M][N]) {
   int i, j;
