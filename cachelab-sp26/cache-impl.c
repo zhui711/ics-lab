@@ -99,6 +99,38 @@ void missfill_cacheline(CacheLine* cache,int line_num,CacheAddr cache_addr,int w
 }
 
 
+// 对单级cache处理的SOP
+void access_single_level(CacheLine* cache,int set_num,int line_num,int cacheline_size,uint64_t addr,bool is_dirty,int* hits,int* misses,int* evictions){
+  // 输入:这是递归里对每个cache level处理的SOP所以应该传入当前cache level/type的配置,原始地址,is_dirty判断是否要脏数据即read/write
+  CacheAddr cache_addr=parse_addr(addr,set_num,cacheline_size);
+  int set=cache_addr.set_index;
+  int hit_way;
+  hit_way=find_hit(cache,line_num,cache_addr);
+  if (hit_way!=-1){
+    if (is_dirty){
+      cache[set*line_num+hit_way].dirty=is_dirty;
+    }
+    cache[set*line_num+hit_way].latest_used=global_time;
+    global_time++;
+    (*hits)++;
+  }
+  else{
+    (*misses)++;
+    int empty_way;
+    empty_way=find_empty(cache,line_num,cache_addr);
+    if (empty_way!=-1){
+      missfill_cacheline(cache,line_num,cache_addr,empty_way,is_dirty);
+    }
+    else{
+      (*evictions)++;
+      int evic_way;
+      evic_way=find_lru(cache,line_num,cache_addr);
+      missfill_cacheline(cache,line_num,cache_addr,evic_way,is_dirty);
+    }
+  }
+}
+
+
 
 // you are not allowed to modify the declaration of this function
 void cacheInit(int levels) {
@@ -150,5 +182,18 @@ void cacheInit(int levels) {
 // you are not allowed to modify the declaration of this function
 void cacheAccess(char op, uint64_t addr, uint32_t len) {
   // op:访问类型; addr: 访问地址
+  if (op=='I'){
+    access_single_level((CacheLine*)l1icache,L1_SET_NUM,L1_LINE_NUM,L1_CACHELINE_SIZE,addr,false,&l1i_hits,&l1i_misses,&l1i_evictions);
+  }
+  else if (op=='L'){
+    access_single_level((CacheLine*)l1dcache,L1_SET_NUM,L1_LINE_NUM,L1_CACHELINE_SIZE,addr,false,&l1d_hits,&l1d_misses,&l1d_evictions);
+  }
+  else if (op=='S'){
+    access_single_level((CacheLine*)l1dcache,L1_SET_NUM,L1_LINE_NUM,L1_CACHELINE_SIZE,addr,true,&l1d_hits,&l1d_misses,&l1d_evictions);
+  }
+  else if (op=='M'){
+    access_single_level((CacheLine*)l1dcache,L1_SET_NUM,L1_LINE_NUM,L1_CACHELINE_SIZE,addr,false,&l1d_hits,&l1d_misses,&l1d_evictions);
+    access_single_level((CacheLine*)l1dcache,L1_SET_NUM,L1_LINE_NUM,L1_CACHELINE_SIZE,addr,true,&l1d_hits,&l1d_misses,&l1d_evictions);
+  }
   // TODO
 }
