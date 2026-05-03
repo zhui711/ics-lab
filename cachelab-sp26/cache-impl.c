@@ -98,6 +98,101 @@ void missfill_cacheline(CacheLine* cache,int line_num,CacheAddr cache_addr,int w
   global_time++;
 }
 
+// 多级helper
+uint64_t build_addr(int set_num,int cacheline_size,CacheAddr cache_addr){
+  // 还原当前这级cache的原始地址用于找对应(write back & back inval);假设offset为0,只关心tag和set index
+  int b=find_log2(cacheline_size);
+  int s=find_log2(set_num);
+  uint64_t origin_addr=(cache_addr.tag<<(b+s))|((uint64_t)cache_addr.set_index<<b);
+  return origin_addr;
+}
+
+void write_back_l1_l2(
+  CacheLine* cache_l2,
+  int l1_set_num,int l1_cacheline_size,CacheAddr l1_cache_addr,
+  int l2_line_num,int l2_set_num,int l2_cacheline_size,int* l2_hits
+){
+  uint64_t origin_addr=build_addr(l1_set_num,l1_cacheline_size,l1_cache_addr);
+  CacheAddr l2_cache_addr=parse_addr(origin_addr,l2_set_num,l2_cacheline_size);
+  int hit_way=find_hit(cache_l2,l2_line_num,l2_cache_addr);
+  assert(hit_way!=-1);
+  (*l2_hits)++;
+  int set=l2_cache_addr.set_index;
+  cache_l2[set*l2_line_num+hit_way].dirty=true;
+  cache_l2[set*l2_line_num+hit_way].latest_used=global_time;
+  global_time++;
+}
+
+void back_inval_l2_l1(CacheLine* cache_l1d,CacheLine* cache_l1i,CacheLine* cache_l2,int l1_set_num,int l1_line_num,int l1_cacheline_size,CacheAddr l2_cache_addr,int l2_line_num,int l2_set_num,int l2_cacheline_size,int* l2_hits){
+  // 到l1d和l1i中找,如果hit驱逐,如果miss则无事发生,其中l2_cache_addr是back inval的对象
+  uint64_t origin_addr=build_addr(l2_set_num,l2_cacheline_size,l2_cache_addr);
+  CacheAddr l1_cache_addr=parse_addr(origin_addr,l1_set_num,l1_cacheline_size);
+  int set=l1_cache_addr.set_index;
+  int l1d_hitway=find_hit(cache_l1d,l1_line_num,l1_cache_addr);
+  if (l1d_hitway!=-1){
+    if(cache_l1d[set*l1_line_num+l1d_hitway].dirty){
+      write_back_l1_l2(cache_l2,l1_set_num,l1_cacheline_size,l1_cache_addr,l2_line_num,l2_set_num,l2_cacheline_size,l2_hits);
+    }
+    cache_l1d[set*l1_line_num+l1d_hitway].valid=false;
+    cache_l1d[set*l1_line_num+l1d_hitway].dirty=false;
+    // (*l1d_hits)++;
+  }
+  // else{
+  //   (*l1d_misses)++;
+  // }
+
+  int l1i_hitway=find_hit(cache_l1i,l1_line_num,l1_cache_addr);
+  if (l1i_hitway!=-1){
+    if(cache_l1i[set*l1_line_num+l1i_hitway].dirty){
+      write_back_l1_l2(cache_l2,l1_set_num,l1_cacheline_size,l1_cache_addr,l2_line_num,l2_set_num,l2_cacheline_size,l2_hits);
+    }
+    cache_l1i[set*l1_line_num+l1i_hitway].valid=false;
+    cache_l1i[set*l1_line_num+l1i_hitway].dirty=false;
+    // (*l1i_hits)++;
+  }
+  // else{
+  //   (*l1i_misses)++;
+  // }
+}
+
+void fetch_to_l2(
+  uint64_t addr,CacheLine* cache_l1d,CacheLine* cache_l1i,CacheLine* cache_l2,
+  int l1_set_num,int l1_line_num,int l1_cacheline_size,int l2_line_num,int l2_set_num,int l2_cacheline_size,
+  int* l2_hits,int* l2_misses,int* l2_evictions
+){
+  // 保证下一级中有上一级miss时需要fetch的东西
+  CacheAddr l2_cache_addr=parse_addr(addr,l2_set_num,l2_cacheline_size);
+  int hit_way=find_hit(cache_l2,l2_line_num,l2_cache_addr);
+  int set=l2_cache_addr.set_index;
+  if (hit_way!=-1){
+    cache_l2[set*l2_line_num+hit_way].latest_used=global_time;
+    global_time++;
+    (*l2_hits)++;
+  }
+  else{
+    (*l2_misses)++;
+    int emp_way=find_empty(cache_l2,l2_line_num,l2_cache_addr);
+    if (emp_way!=-1){
+      missfill_cacheline(cache_l2,l2_line_num,l2_cache_addr,emp_way,false);
+    }
+    else{
+      (*l2_evictions)++;
+      int vic_way=find_lru(cache_l2,l2_line_num,l2_cache_addr);
+      // 还得back inval处理victim保证inclusive
+      int set=l2_cache_addr.set_index;
+      CacheAddr vic_cache_addr;
+      vic_cache_addr.tag=cache_l2[set*l2_line_num+vic_way].tag;
+      vic_cache_addr.set_index=set;
+      vic_cache_addr.block_offset=0;
+      back_inval_l2_l1(cache_l1d,cache_l1i,cache_l2,l1_set_num,l1_line_num,l1_cacheline_size,vic_cache_addr,l2_line_num,l2_set_num,l2_cacheline_size,l2_hits);
+      // if(cache_l2[].dirty){
+      //   write_back_l1_l2()
+      // }
+      missfill_cacheline(cache_l2,l2_line_num,l2_cache_addr,vic_way,false);
+    }
+  }
+}
+
 
 // 对单级cache处理的SOP
 void access_single_level(CacheLine* cache,int set_num,int line_num,int cacheline_size,uint64_t addr,bool is_dirty,int* hits,int* misses,int* evictions){
@@ -128,6 +223,53 @@ void access_single_level(CacheLine* cache,int set_num,int line_num,int cacheline
       missfill_cacheline(cache,line_num,cache_addr,evic_way,is_dirty);
     }
   }
+}
+
+// L1+L2的SOP
+void access_l1_l2(
+  uint64_t addr,CacheLine* cache_l1,CacheLine* cache_l1d,CacheLine* cache_l1i,CacheLine* cache_l2,
+  int l1_set_num,int l1_line_num,int l1_cacheline_size,int l2_line_num,int l2_set_num,int l2_cacheline_size,
+  int* l1_hits,int* l1_misses,int* l1_evictions,
+  int* l2_hits,int* l2_misses,int* l2_evictions,
+  bool is_dirty
+){
+  // 为了让l1i和lid共用,CacheLine* cache_l1是当前访问的l1类型(主操作),后面的cache_l1i/d只是为了fetch这种确定性地传入
+  CacheAddr l1_cache_addr=parse_addr(addr,l1_set_num,l1_cacheline_size);
+  int l1_hitway=find_hit(cache_l1,l1_line_num,l1_cache_addr);
+  int set=l1_cache_addr.set_index;
+  if (l1_hitway!=-1){
+    cache_l1[set*l1_line_num+l1_hitway].latest_used=global_time;
+    global_time++;
+    (*l1_hits)++;
+    // cache_l1[set*l1_line_num+l1_hitway].dirty=is_dirty;————debug: read hit不能改dirty,hit时只有write才能改
+    if (is_dirty){
+      cache_l1[set*l1_line_num+l1_hitway].dirty=true;
+    }
+  }
+  else{
+    (*l1_misses)++;
+    fetch_to_l2(addr,cache_l1d,cache_l1i,cache_l2,l1_set_num,l1_line_num,l1_cacheline_size,l2_line_num,l2_set_num,l2_cacheline_size,l2_hits,l2_misses,l2_evictions);
+    int l1_empway=find_empty(cache_l1,l1_line_num,l1_cache_addr);
+    if (l1_empway!=-1){
+      missfill_cacheline(cache_l1,l1_line_num,l1_cache_addr,l1_empway,is_dirty);
+      cache_l1[set*l1_line_num+l1_empway].dirty=is_dirty;
+    }
+    else{
+      (*l1_evictions)++;
+      int l1_evicway=find_lru(cache_l1,l1_line_num,l1_cache_addr);
+      CacheAddr vic_cache_addr;
+      vic_cache_addr.tag=cache_l1[set*l1_line_num+l1_evicway].tag;
+      vic_cache_addr.set_index=set;
+      vic_cache_addr.block_offset=0;
+      // back_inval_l2_l1(cache_l1d,cache_l1i,cache_l2,l1_set_num,l1_line_num,l1_cacheline_size,vic_cache_addr,l2_line_num,l2_set_num,l2_cacheline_size,l2_hits);
+      if (cache_l1[set*l1_line_num+l1_evicway].dirty){
+        write_back_l1_l2(cache_l2,l1_set_num,l1_cacheline_size,vic_cache_addr,l2_line_num,l2_set_num,l2_cacheline_size,l2_hits);
+      }
+      missfill_cacheline(cache_l1,l1_line_num,l1_cache_addr,l1_evicway,is_dirty);
+      cache_l1[set*l1_line_num+l1_evicway].dirty=is_dirty;
+    }
+  }
+  //todo
 }
 
 
@@ -183,17 +325,68 @@ void cacheInit(int levels) {
 void cacheAccess(char op, uint64_t addr, uint32_t len) {
   // op:访问类型; addr: 访问地址
   if (op=='I'){
-    access_single_level((CacheLine*)l1icache,L1_SET_NUM,L1_LINE_NUM,L1_CACHELINE_SIZE,addr,false,&l1i_hits,&l1i_misses,&l1i_evictions);
+    if (cache_levels==1){
+      access_single_level((CacheLine*)l1icache,L1_SET_NUM,L1_LINE_NUM,L1_CACHELINE_SIZE,addr,false,&l1i_hits,&l1i_misses,&l1i_evictions);
+    }
+    else if (cache_levels==2){
+      access_l1_l2(
+        addr,(CacheLine*)l1icache,(CacheLine*)l1dcache,(CacheLine*)l1icache,(CacheLine*)l2ucache,
+        L1_SET_NUM,L1_LINE_NUM,L1_CACHELINE_SIZE,L2_LINE_NUM,L2_SET_NUM,L2_CACHELINE_SIZE,
+        &l1i_hits,&l1i_misses,&l1i_evictions,
+        &l2_hits,&l2_misses,&l2_evictions,
+        false
+      );
+    }
   }
   else if (op=='L'){
-    access_single_level((CacheLine*)l1dcache,L1_SET_NUM,L1_LINE_NUM,L1_CACHELINE_SIZE,addr,false,&l1d_hits,&l1d_misses,&l1d_evictions);
+    if (cache_levels==1){
+      access_single_level((CacheLine*)l1dcache,L1_SET_NUM,L1_LINE_NUM,L1_CACHELINE_SIZE,addr,false,&l1d_hits,&l1d_misses,&l1d_evictions);
+    }
+    else if (cache_levels==2){
+      access_l1_l2(
+        addr,(CacheLine*)l1dcache,(CacheLine*)l1dcache,(CacheLine*)l1icache,(CacheLine*)l2ucache,
+        L1_SET_NUM,L1_LINE_NUM,L1_CACHELINE_SIZE,L2_LINE_NUM,L2_SET_NUM,L2_CACHELINE_SIZE,
+        &l1d_hits,&l1d_misses,&l1d_evictions,
+        &l2_hits,&l2_misses,&l2_evictions,
+        false
+      );
+    }
   }
   else if (op=='S'){
-    access_single_level((CacheLine*)l1dcache,L1_SET_NUM,L1_LINE_NUM,L1_CACHELINE_SIZE,addr,true,&l1d_hits,&l1d_misses,&l1d_evictions);
+    if (cache_levels==1){
+      access_single_level((CacheLine*)l1dcache,L1_SET_NUM,L1_LINE_NUM,L1_CACHELINE_SIZE,addr,true,&l1d_hits,&l1d_misses,&l1d_evictions);
+    }
+    else if (cache_levels==2){
+      access_l1_l2(
+        addr,(CacheLine*)l1dcache,(CacheLine*)l1dcache,(CacheLine*)l1icache,(CacheLine*)l2ucache,
+        L1_SET_NUM,L1_LINE_NUM,L1_CACHELINE_SIZE,L2_LINE_NUM,L2_SET_NUM,L2_CACHELINE_SIZE,
+        &l1d_hits,&l1d_misses,&l1d_evictions,
+        &l2_hits,&l2_misses,&l2_evictions,
+        true
+      );
+    }
   }
   else if (op=='M'){
-    access_single_level((CacheLine*)l1dcache,L1_SET_NUM,L1_LINE_NUM,L1_CACHELINE_SIZE,addr,false,&l1d_hits,&l1d_misses,&l1d_evictions);
-    access_single_level((CacheLine*)l1dcache,L1_SET_NUM,L1_LINE_NUM,L1_CACHELINE_SIZE,addr,true,&l1d_hits,&l1d_misses,&l1d_evictions);
+    if (cache_levels==1){
+      access_single_level((CacheLine*)l1dcache,L1_SET_NUM,L1_LINE_NUM,L1_CACHELINE_SIZE,addr,false,&l1d_hits,&l1d_misses,&l1d_evictions);
+      access_single_level((CacheLine*)l1dcache,L1_SET_NUM,L1_LINE_NUM,L1_CACHELINE_SIZE,addr,true,&l1d_hits,&l1d_misses,&l1d_evictions);
+    }
+    else if (cache_levels==2){
+      access_l1_l2(
+        addr,(CacheLine*)l1dcache,(CacheLine*)l1dcache,(CacheLine*)l1icache,(CacheLine*)l2ucache,
+        L1_SET_NUM,L1_LINE_NUM,L1_CACHELINE_SIZE,L2_LINE_NUM,L2_SET_NUM,L2_CACHELINE_SIZE,
+        &l1d_hits,&l1d_misses,&l1d_evictions,
+        &l2_hits,&l2_misses,&l2_evictions,
+        false
+      );
+      access_l1_l2(
+        addr,(CacheLine*)l1dcache,(CacheLine*)l1dcache,(CacheLine*)l1icache,(CacheLine*)l2ucache,
+        L1_SET_NUM,L1_LINE_NUM,L1_CACHELINE_SIZE,L2_LINE_NUM,L2_SET_NUM,L2_CACHELINE_SIZE,
+        &l1d_hits,&l1d_misses,&l1d_evictions,
+        &l2_hits,&l2_misses,&l2_evictions,
+        true
+      );
+    }
   }
   // TODO
 }
