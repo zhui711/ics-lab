@@ -22,6 +22,31 @@ char transpose_submit_desc[] = "Transpose submission";
 void transpose_submit(int M, int N, int A[N][M], int B[M][N]) {
   if (M == 32 && N == 32) {
     // you can do 32x32 transpose here
+    for (int i=0;i<32;i+=8){
+      for (int j=0;j<32;j+=8){
+        for (int k=i;k<i+8;k++){
+          int t0,t1,t2,t3,t4,t5,t6,t7;
+          t0=A[k][j+0];
+          t1=A[k][j+1];
+          t2=A[k][j+2];
+          t3=A[k][j+3];
+          t4=A[k][j+4];
+          t5=A[k][j+5];
+          t6=A[k][j+6];
+          t7=A[k][j+7];
+          B[j+0][k]=t0;
+          B[j+1][k]=t1;
+          B[j+2][k]=t2;
+          B[j+3][k]=t3;
+          B[j+4][k]=t4;
+          B[j+5][k]=t5;
+          B[j+6][k]=t6;
+          B[j+7][k]=t7;
+        }
+      }
+    }
+
+
   } else if (M == 64 && N == 64) {
     // you can do 64x64 transpose here
   } else {
